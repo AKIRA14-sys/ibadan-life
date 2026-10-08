@@ -1,0 +1,8 @@
+
+  VITE v5.4.21  ready in 284 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://192.168.0.2:3000/
+9:09:57 PM [vite] page reload index.html
+9:10:30 PM [vite] hmr update /src/components/MobileControls.tsx
+9:11:40 PM [vite] hmr update /src/components/MobileControls.tsx
