@@ -1,24 +1,28 @@
 import React, { useRef, useState } from 'react';
-import { Compass, Zap, MessageSquare, MapPin } from 'lucide-react';
+import { Compass, Zap, MessageSquare, MapPin, ArrowUpCircle } from 'lucide-react';
 
 interface Props {
   onMove: (vector: { x: number; y: number }) => void;
   onCameraRotate: (delta: { x: number; y: number }) => void;
   onToggleSprint: (sprinting: boolean) => void;
+  onJump?: () => void;
   onInteract: () => void;
   onOpenMap: () => void;
   isNearPlayerOrObject: boolean;
   currentDistrict: string;
+  lagosTime?: string;
 }
 
 export const MobileControls: React.FC<Props> = ({
   onMove,
   onCameraRotate,
   onToggleSprint,
+  onJump,
   onInteract,
   onOpenMap,
   isNearPlayerOrObject,
-  currentDistrict
+  currentDistrict,
+  lagosTime
 }) => {
   const joystickRef = useRef<HTMLDivElement>(null);
   const [, setJoystickActive] = useState(false);
@@ -92,11 +96,19 @@ export const MobileControls: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 select-none">
-      {/* Top District Status Badge & Map Toggle */}
+      {/* Top District Status Badge & Time & Map Toggle */}
       <div className="flex items-center justify-between w-full pointer-events-auto">
-        <div className="hud-card px-3.5 py-1.5 flex items-center gap-2 border border-emerald-500/30 text-xs font-bold text-white">
-          <MapPin className="w-4 h-4 text-emerald-400 animate-bounce" />
-          <span>{currentDistrict}</span>
+        <div className="flex items-center gap-2">
+          <div className="hud-card px-3.5 py-1.5 flex items-center gap-2 border border-emerald-500/30 text-xs font-bold text-white">
+            <MapPin className="w-4 h-4 text-emerald-400 animate-bounce" />
+            <span>{currentDistrict}</span>
+          </div>
+
+          {lagosTime && (
+            <div className="hud-card px-3 py-1.5 border border-amber-500/30 text-xs font-bold text-amber-300">
+              {lagosTime}
+            </div>
+          )}
         </div>
 
         <button
@@ -144,16 +156,29 @@ export const MobileControls: React.FC<Props> = ({
             </button>
           )}
 
-          <button
-            onClick={toggleSprint}
-            className={`p-3.5 rounded-full border shadow-xl flex items-center justify-center transition-all ${
-              isSprinting
-                ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110'
-                : 'bg-slate-900/80 text-gray-300 border-white/20'
-            }`}
-          >
-            <Zap className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            {onJump && (
+              <button
+                onClick={onJump}
+                className="p-3.5 rounded-full border shadow-xl flex items-center justify-center bg-slate-900/80 text-emerald-400 border-emerald-500/30 active:scale-95"
+                title="Jump"
+              >
+                <ArrowUpCircle className="w-5 h-5" />
+              </button>
+            )}
+
+            <button
+              onClick={toggleSprint}
+              className={`p-3.5 rounded-full border shadow-xl flex items-center justify-center transition-all ${
+                isSprinting
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110'
+                  : 'bg-slate-900/80 text-gray-300 border-white/20'
+              }`}
+              title="Sprint"
+            >
+              <Zap className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "python3 scripts/extract_assets.py && vite",
+    "prebuild": "python3 scripts/extract_assets.py",
     "build": "tsc && vite build",
     "lint": "tsc",
     "preview": "vite preview"
