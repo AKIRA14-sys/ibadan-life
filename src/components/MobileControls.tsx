@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Compass, Zap, MessageSquare, MapPin, ArrowUpCircle } from 'lucide-react';
+import { Zap, MessageSquare, ArrowUpCircle } from 'lucide-react';
 
 interface Props {
   onMove: (vector: { x: number; y: number }) => void;
@@ -7,9 +7,10 @@ interface Props {
   onToggleSprint: (sprinting: boolean) => void;
   onJump?: () => void;
   onInteract: () => void;
-  onOpenMap: () => void;
+  onOpenMap?: () => void;
+  onOpenTravel?: () => void;
   isNearPlayerOrObject: boolean;
-  currentDistrict: string;
+  currentDistrict?: string;
   lagosTime?: string;
 }
 
@@ -19,10 +20,7 @@ export const MobileControls: React.FC<Props> = ({
   onToggleSprint,
   onJump,
   onInteract,
-  onOpenMap,
-  isNearPlayerOrObject,
-  currentDistrict,
-  lagosTime
+  isNearPlayerOrObject
 }) => {
   const joystickRef = useRef<HTMLDivElement>(null);
   const [, setJoystickActive] = useState(false);
@@ -95,62 +93,39 @@ export const MobileControls: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 select-none">
-      {/* Top District Status Badge & Time & Map Toggle */}
-      <div className="flex items-center justify-between w-full pointer-events-auto">
-        <div className="flex items-center gap-2">
-          <div className="hud-card px-3.5 py-1.5 flex items-center gap-2 border border-emerald-500/30 text-xs font-bold text-white">
-            <MapPin className="w-4 h-4 text-emerald-400 animate-bounce" />
-            <span>{currentDistrict}</span>
-          </div>
-
-          {lagosTime && (
-            <div className="hud-card px-3 py-1.5 border border-amber-500/30 text-xs font-bold text-amber-300">
-              {lagosTime}
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={onOpenMap}
-          className="hud-button px-3 py-1.5 rounded-lg text-xs font-bold text-amber-300 border border-amber-500/30 flex items-center gap-1.5 pointer-events-auto"
-        >
-          <Compass className="w-4 h-4 text-amber-400" /> MAP
-        </button>
-      </div>
-
-      {/* Touch camera swipe zone (Right side) */}
+    <div className="fixed inset-0 pointer-events-none z-30 flex flex-col justify-between p-3 sm:p-4 select-none">
+      {/* Touch Camera Swipe Area (Right half of viewport) */}
       <div
-        className="absolute right-0 top-0 w-1/2 h-full pointer-events-auto"
+        className="absolute right-0 top-16 w-3/5 h-[calc(100%-120px)] pointer-events-auto"
         onTouchStart={handleCameraTouchStart}
         onTouchMove={handleCameraTouchMove}
         onTouchEnd={handleCameraTouchEnd}
       />
 
-      {/* Bottom Controls Area */}
-      <div className="mt-auto flex items-end justify-between w-full pointer-events-auto pb-2">
-        {/* Virtual Joystick */}
+      {/* Bottom Touch Controls Area */}
+      <div className="mt-auto flex items-end justify-between w-full pointer-events-auto pb-1 sm:pb-2">
+        {/* Virtual Movement Joystick */}
         <div
           ref={joystickRef}
           onTouchStart={handleJoystickTouchStart}
           onTouchMove={handleJoystickTouchMove}
           onTouchEnd={handleJoystickTouchEnd}
-          className="relative w-28 h-28 rounded-full bg-slate-900/60 border-2 border-white/20 backdrop-blur-md flex items-center justify-center touch-none"
+          className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-slate-950/80 border-2 border-emerald-500/40 backdrop-blur-md flex items-center justify-center touch-none shadow-2xl"
         >
           <div
-            className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 shadow-lg border border-white/40 absolute transition-transform duration-75"
+            className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 shadow-xl border border-white/50 absolute transition-transform duration-75"
             style={{
               transform: `translate(${knobPos.x}px, ${knobPos.y}px)`
             }}
           />
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-3 items-end">
+        {/* Action Buttons: Interact, Jump, Sprint */}
+        <div className="flex flex-col gap-2.5 items-end">
           {isNearPlayerOrObject && (
             <button
               onClick={onInteract}
-              className="hud-button-primary px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-xl animate-pulse"
+              className="hud-button-primary px-5 py-2.5 rounded-2xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 shadow-2xl animate-pulse"
             >
               <MessageSquare className="w-4 h-4" /> INTERACT
             </button>
@@ -160,23 +135,23 @@ export const MobileControls: React.FC<Props> = ({
             {onJump && (
               <button
                 onClick={onJump}
-                className="p-3.5 rounded-full border shadow-xl flex items-center justify-center bg-slate-900/80 text-emerald-400 border-emerald-500/30 active:scale-95"
+                className="w-12 h-12 rounded-full border border-emerald-400/40 shadow-xl flex items-center justify-center bg-slate-900/90 text-emerald-400 active:scale-95 active:bg-emerald-500/20"
                 title="Jump"
               >
-                <ArrowUpCircle className="w-5 h-5" />
+                <ArrowUpCircle className="w-6 h-6" />
               </button>
             )}
 
             <button
               onClick={toggleSprint}
-              className={`p-3.5 rounded-full border shadow-xl flex items-center justify-center transition-all ${
+              className={`w-12 h-12 rounded-full border shadow-xl flex items-center justify-center transition-all ${
                 isSprinting
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110'
-                  : 'bg-slate-900/80 text-gray-300 border-white/20'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110 shadow-amber-500/50'
+                  : 'bg-slate-900/90 text-gray-300 border-white/20 active:scale-95'
               }`}
               title="Sprint"
             >
-              <Zap className="w-5 h-5" />
+              <Zap className="w-6 h-6" />
             </button>
           </div>
         </div>

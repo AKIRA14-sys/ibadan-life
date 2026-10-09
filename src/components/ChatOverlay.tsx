@@ -24,7 +24,7 @@ export const ChatOverlay: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed bottom-20 left-4 z-40 max-w-sm w-full pointer-events-none">
+    <div className="fixed bottom-36 left-4 z-40 max-w-sm w-full pointer-events-none">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}

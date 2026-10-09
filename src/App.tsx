@@ -3,13 +3,15 @@ import * as THREE from 'three';
 import { getOrCreateGuestSession } from './services/guestAuth';
 import { GameDataService } from './services/gameData';
 import { RealtimeService } from './services/realtime';
-import { IbadanWorld } from './game/IbadanWorld';
+import { IbadanWorld, IBADAN_DISTRICTS, DistrictZone } from './game/IbadanWorld';
 import { CameraManager } from './game/CameraManager';
 import { AnimatedCharacterController } from './game/AnimatedCharacter';
 import { PhysicsController } from './game/PhysicsController';
 import { NPCManager } from './game/NPCManager';
+import { TrafficManager } from './game/TrafficManager';
 import { CharacterMeshBuilder } from './game/CharacterModel';
 import { CharacterCreator } from './components/CharacterCreator';
+import { CharacterCustomizationModal } from './components/CharacterCustomizationModal';
 import { MobileControls } from './components/MobileControls';
 import { OrientationPrompt } from './components/OrientationPrompt';
 import { InteractionMenu } from './components/InteractionMenu';
@@ -20,8 +22,10 @@ import { MarketModal } from './components/MarketModal';
 import { HousingModal } from './components/HousingModal';
 import { BusinessModal } from './components/BusinessModal';
 import { MapModal } from './components/MapModal';
+import { TravelModal } from './components/TravelModal';
 import { Player, CharacterData, HiddenBackground, Wallet, NetworkPlayer, ChatMessage, Job, Property } from './types';
-import { Briefcase, ShoppingBag, Home, Building2 } from 'lucide-react';
+import { Briefcase, ShoppingBag, Home, Building2, Shirt } from 'lucide-react';
+import { OutfitOption } from './data/outfits';
 
 export function App() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -39,7 +43,7 @@ export function App() {
   const [currentDistrict, setCurrentDistrict] = useState('Dugbe Commercial Hub');
   const [lagosTimeDisplay, setLagosTimeDisplay] = useState('12:00 WAT (Day)');
 
-  const [activeModal, setActiveModal] = useState<'jobs' | 'market' | 'housing' | 'business' | 'map' | null>(null);
+  const [activeModal, setActiveModal] = useState<'jobs' | 'market' | 'housing' | 'business' | 'map' | 'travel' | 'customization' | null>(null);
   const [selectedInteractionPlayer, setSelectedInteractionPlayer] = useState<NetworkPlayer | null>(null);
   const [nearestInteraction, setNearestInteraction] = useState<string | null>(null);
 
@@ -53,6 +57,7 @@ export function App() {
   const localPlayerControllerRef = useRef<AnimatedCharacterController | null>(null);
   const physicsRef = useRef<PhysicsController>(new PhysicsController());
   const npcManagerRef = useRef<NPCManager | null>(null);
+  const trafficManagerRef = useRef<TrafficManager | null>(null);
 
   const remotePlayerMeshesRef = useRef<Map<string, THREE.Group>>(new Map());
   const cameraManagerRef = useRef<CameraManager | null>(null);
@@ -60,6 +65,7 @@ export function App() {
 
   const moveVectorRef = useRef({ x: 0, y: 0 });
   const isSprintingRef = useRef(false);
+  const autoWalkTargetRef = useRef<THREE.Vector3 | null>(null);
 
   useEffect(() => {
     async function initSession() {
@@ -122,7 +128,7 @@ export function App() {
     const height = mountRef.current.clientHeight || window.innerHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x38bdf8); // Sky blue background default
+    scene.background = new THREE.Color(0x38bdf8);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
@@ -143,6 +149,10 @@ export function App() {
     const npcMgr = new NPCManager(scene);
     npcManagerRef.current = npcMgr;
     npcMgr.spawnPresetNPCs();
+
+    const trafficMgr = new TrafficManager(scene);
+    trafficManagerRef.current = trafficMgr;
+    trafficMgr.spawnTraffic();
 
     const localController = new AnimatedCharacterController();
     localPlayerControllerRef.current = localController;
@@ -175,7 +185,7 @@ export function App() {
       const delta = clock.getDelta();
 
       timeAccumulator += delta;
-      if (timeAccumulator > 10.0) { // update time of day periodically
+      if (timeAccumulator > 10.0) {
         timeAccumulator = 0;
         world.updateLagosTime();
         setLagosTimeDisplay(world.getFormattedLagosTime());
@@ -183,7 +193,20 @@ export function App() {
 
       if (localPlayerControllerRef.current && cameraManagerRef.current) {
         const localGroup = localPlayerControllerRef.current.group;
-        const move = moveVectorRef.current;
+        let move = moveVectorRef.current;
+
+        // Auto-Walk navigation override
+        if (autoWalkTargetRef.current) {
+          const dir = new THREE.Vector3().subVectors(autoWalkTargetRef.current, localGroup.position);
+          dir.y = 0;
+          if (dir.length() < 2.0) {
+            autoWalkTargetRef.current = null;
+          } else {
+            dir.normalize();
+            move = { x: dir.x, y: -dir.z };
+          }
+        }
+
         const isMoving = move.x !== 0 || move.y !== 0;
 
         if (isMoving) {
@@ -200,7 +223,6 @@ export function App() {
 
           const desiredVelocity = moveDir.multiplyScalar(speedMultiplier * delta);
 
-          // Apply physics & collision sliding
           physicsRef.current.update(
             localGroup.position,
             desiredVelocity,
@@ -233,7 +255,6 @@ export function App() {
           );
         }
 
-        // Update local character animation state
         localPlayerControllerRef.current.update(
           delta,
           isMoving,
@@ -241,8 +262,18 @@ export function App() {
           physicsRef.current.isJumping
         );
 
-        // Proximity checks for interactions
-        const npcMatch = npcMgr.getNearestNPC(localGroup.position, 3.0);
+        // Traffic update and vehicle collision recovery check
+        const trafficState = trafficMgr.update(delta, localGroup.position);
+        if (trafficState.collided) {
+          const safeZ = localGroup.position.z > 0 ? 10.5 : -10.5;
+          const candidatePos = localGroup.position.clone();
+          candidatePos.z = safeZ;
+          if (!physicsRef.current.checkCollision(candidatePos, world.colliders)) {
+            localGroup.position.z = safeZ;
+          }
+        }
+
+        const npcMatch = npcMgr.getNearestNPC(localGroup.position, 3.5);
         if (npcMatch) {
           setNearestInteraction(`Talk to ${npcMatch.data.name} (${npcMatch.data.role})`);
         } else if (remotePlayers.length > 0) {
@@ -252,10 +283,8 @@ export function App() {
         }
       }
 
-      // Update NPCs
       npcMgr.update(delta);
 
-      // Remote player meshes
       remotePlayers.forEach((rp) => {
         let mesh = remotePlayerMeshesRef.current.get(rp.id);
         if (!mesh) {
@@ -302,6 +331,7 @@ export function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      autoWalkTargetRef.current = null; // Manual key cancels auto-walk
       if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') moveVectorRef.current.y = -1;
       if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') moveVectorRef.current.y = 1;
       if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') moveVectorRef.current.x = -1;
@@ -323,6 +353,41 @@ export function App() {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
+
+  const handleSelectTravel = (destination: DistrictZone, mode: 'trek' | 'autowalk' | 'teleport') => {
+    const [cx, cz] = destination.center;
+    setActiveModal(null);
+
+    if (mode === 'teleport') {
+      if (localPlayerControllerRef.current) {
+        localPlayerControllerRef.current.group.position.set(cx, 0.1, cz + 10.5);
+      }
+      setCurrentDistrict(destination.name);
+    } else if (mode === 'autowalk') {
+      autoWalkTargetRef.current = new THREE.Vector3(cx, 0, cz);
+    } else if (mode === 'trek') {
+      alert(`Waypoint set to ${destination.name}! Follow the direction indicator.`);
+    }
+  };
+
+  const handleSelectOutfit = (outfit: OutfitOption, gender: 'Male' | 'Female') => {
+    if (!playerData) return;
+    const updatedChar = {
+      ...playerData.character,
+      gender,
+      clothing: {
+        ...playerData.character.clothing,
+        top: outfit.topColor,
+        bottom: outfit.bottomColor
+      }
+    };
+
+    setPlayerData((prev) => prev ? { ...prev, character: updatedChar } : null);
+
+    if (localPlayerControllerRef.current) {
+      localPlayerControllerRef.current.loadCharacter(updatedChar, true);
+    }
+  };
 
   const handleWorkJob = async (job: Job) => {
     if (!playerData) return;
@@ -422,20 +487,52 @@ export function App() {
 
       <div ref={mountRef} className="absolute inset-0 z-0" />
 
-      <div className="fixed top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
+      <div className="fixed top-2.5 left-3 right-3 z-20 flex items-center justify-between pointer-events-none flex-wrap gap-2">
         <div className="flex items-center gap-2 pointer-events-auto">
-          <div className="hud-card px-3.5 py-1.5 flex items-center gap-2 border border-emerald-500/30">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 pulse-green" />
-            <span className="font-bold text-xs text-white">{playerData.player.display_name}</span>
+          <div className="hud-card px-3 py-1.5 flex items-center gap-2 border border-emerald-500/30 text-xs font-bold text-white shadow-lg">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 pulse-green" />
+            <span>{playerData.player.display_name}</span>
           </div>
 
           <WalletHUD wallet={playerData.wallet} />
+
+          <div className="hud-card px-3 py-1.5 hidden sm:flex items-center gap-1.5 border border-emerald-500/30 text-xs font-bold text-white shadow-lg">
+            <span className="truncate max-w-[120px]">{currentDistrict}</span>
+          </div>
+
+          <div className="hud-card px-2.5 py-1.5 border border-amber-500/30 text-[11px] font-bold text-amber-300 shadow-lg">
+            {lagosTimeDisplay}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-1.5 pointer-events-auto">
+          <button
+            onClick={() => setActiveModal('customization')}
+            className="hud-button p-2 rounded-xl border border-purple-500/40 text-purple-300 shadow-lg"
+            title="Outfit Customization"
+          >
+            <Shirt className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setActiveModal('travel')}
+            className="hud-button px-2.5 py-1.5 rounded-xl border border-teal-500/40 text-teal-300 text-xs font-bold shadow-lg"
+            title="Travel Locations"
+          >
+            TRAVEL
+          </button>
+
+          <button
+            onClick={() => setActiveModal('map')}
+            className="hud-button px-2.5 py-1.5 rounded-xl border border-amber-500/40 text-amber-300 text-xs font-bold shadow-lg"
+            title="Interactive Map"
+          >
+            MAP
+          </button>
+
           <button
             onClick={() => setActiveModal('jobs')}
-            className="hud-button p-2.5 rounded-xl border border-emerald-500/30 text-emerald-400"
+            className="hud-button p-2 rounded-xl border border-emerald-500/30 text-emerald-400 shadow-lg"
             title="Jobs"
           >
             <Briefcase className="w-4 h-4" />
@@ -443,7 +540,7 @@ export function App() {
 
           <button
             onClick={() => setActiveModal('market')}
-            className="hud-button p-2.5 rounded-xl border border-amber-500/30 text-amber-400"
+            className="hud-button p-2 rounded-xl border border-amber-500/30 text-amber-400 shadow-lg"
             title="Market"
           >
             <ShoppingBag className="w-4 h-4" />
@@ -451,7 +548,7 @@ export function App() {
 
           <button
             onClick={() => setActiveModal('housing')}
-            className="hud-button p-2.5 rounded-xl border border-blue-500/30 text-blue-400"
+            className="hud-button p-2 rounded-xl border border-blue-500/30 text-blue-400 shadow-lg"
             title="Housing"
           >
             <Home className="w-4 h-4" />
@@ -459,7 +556,7 @@ export function App() {
 
           <button
             onClick={() => setActiveModal('business')}
-            className="hud-button p-2.5 rounded-xl border border-purple-500/30 text-purple-400"
+            className="hud-button p-2 rounded-xl border border-purple-500/30 text-purple-400 shadow-lg"
             title="Business"
           >
             <Building2 className="w-4 h-4" />
@@ -468,7 +565,10 @@ export function App() {
       </div>
 
       <MobileControls
-        onMove={(v) => { moveVectorRef.current = v; }}
+        onMove={(v) => {
+          autoWalkTargetRef.current = null;
+          moveVectorRef.current = v;
+        }}
         onCameraRotate={(d) => { cameraManagerRef.current?.rotateAzimuth(d.x); }}
         onToggleSprint={(s) => { isSprintingRef.current = s; }}
         onJump={() => physicsRef.current.applyJump()}
@@ -487,6 +587,7 @@ export function App() {
           }
         }}
         onOpenMap={() => setActiveModal('map')}
+        onOpenTravel={() => setActiveModal('travel')}
         isNearPlayerOrObject={nearestInteraction !== null}
         currentDistrict={currentDistrict}
         lagosTime={lagosTimeDisplay}
@@ -517,6 +618,27 @@ export function App() {
             alert(`Following ${p.display_name}...`);
             setSelectedInteractionPlayer(null);
           }}
+        />
+      )}
+
+      {activeModal === 'travel' && (
+        <TravelModal
+          currentDistrict={currentDistrict}
+          playerPosition={[
+            localPlayerControllerRef.current?.group.position.x || 0,
+            localPlayerControllerRef.current?.group.position.y || 0,
+            localPlayerControllerRef.current?.group.position.z || 0
+          ]}
+          onClose={() => setActiveModal(null)}
+          onSelectTravel={handleSelectTravel}
+        />
+      )}
+
+      {activeModal === 'customization' && (
+        <CharacterCustomizationModal
+          gender={playerData.character.gender}
+          onClose={() => setActiveModal(null)}
+          onSelectOutfit={handleSelectOutfit}
         />
       )}
 
