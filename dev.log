@@ -1,0 +1,27 @@
+
+> ibadan-life@1.0.0 dev
+> python3 scripts/extract_assets.py && vite
+
+Inspecting maximo model.zip...
+Archive maximo model.zip already extracted and up-to-date.
+Inspecting kenney_city-kit-suburban_20.zip...
+Archive kenney_city-kit-suburban_20.zip already extracted and up-to-date.
+Inspecting kenney_car-kit.zip...
+Archive kenney_car-kit.zip already extracted and up-to-date.
+Inspecting kenney_furniture-kit.zip...
+Archive kenney_furniture-kit.zip already extracted and up-to-date.
+Inspecting kenney_nature-kit.zip...
+Archive kenney_nature-kit.zip already extracted and up-to-date.
+
+  VITE v5.4.21  ready in 257 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://192.168.0.2:3000/
+7:59:24 PM [vite] hmr update /src/components/MobileControls.tsx
+7:59:37 PM [vite] hmr update /src/App.tsx
+8:00:14 PM [vite] hmr update /src/components/ChatOverlay.tsx
+8:01:42 PM [vite] hmr update /src/App.tsx
+8:01:50 PM [vite] hmr update /src/App.tsx, /src/components/MapModal.tsx, /src/components/TravelModal.tsx
+8:02:47 PM [vite] hmr update /src/components/MobileControls.tsx
+8:06:14 PM [vite] hmr update /src/App.tsx
+8:07:03 PM [vite] hmr update /src/App.tsx

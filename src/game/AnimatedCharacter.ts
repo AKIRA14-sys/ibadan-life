@@ -13,9 +13,11 @@ export class AnimatedCharacterController {
 
   private targetRotationY: number = 0;
   private currentRotationY: number = 0;
+  private clothingGroup: THREE.Group = new THREE.Group();
 
   constructor() {
     this.group = new THREE.Group();
+    this.group.add(this.clothingGroup);
   }
 
   public async loadCharacter(characterData?: CharacterData, isLocalPlayer: boolean = false): Promise<void> {
@@ -27,46 +29,40 @@ export class AnimatedCharacterController {
       const baseFbx = await fbxLoader.loadAsync(`${basePath}X Bot.fbx`);
       this.group.add(baseFbx);
 
-      // Adjust scale (50-60% scale ratio relative to city structures)
       baseFbx.scale.set(0.012, 0.012, 0.012);
+
+      const skinColor = new THREE.Color(characterData?.skin_tone || '#8d5524');
+      const topColor = new THREE.Color(characterData?.clothing?.top || '#2563eb');
+      const bottomColor = new THREE.Color(characterData?.clothing?.bottom || '#1e293b');
+
       baseFbx.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
 
           const mesh = child as THREE.Mesh;
-          if (characterData && mesh.material) {
-            // Apply customized clothing & skin tone to model materials
-            const skinColor = new THREE.Color(characterData.skin_tone || '#8d5524');
-            const topColor = new THREE.Color(characterData.clothing?.top || '#2563eb');
-            const bottomColor = new THREE.Color(characterData.clothing?.bottom || '#1e293b');
-
-            if (mesh.name.toLowerCase().includes('body') || mesh.name.toLowerCase().includes('surface')) {
-              mesh.material = new THREE.MeshStandardMaterial({
-                color: skinColor,
-                roughness: 0.7,
-                metalness: 0.1
-              });
-            } else if (mesh.name.toLowerCase().includes('joint') || mesh.name.toLowerCase().includes('alpha')) {
-              mesh.material = new THREE.MeshStandardMaterial({
-                color: topColor,
-                roughness: 0.5,
-                metalness: 0.2
-              });
-            } else {
-              mesh.material = new THREE.MeshStandardMaterial({
-                color: bottomColor,
-                roughness: 0.6
-              });
-            }
+          if (mesh.name.toLowerCase().includes('body') || mesh.name.toLowerCase().includes('surface') || mesh.name.toLowerCase().includes('bot')) {
+            mesh.material = new THREE.MeshStandardMaterial({
+              color: skinColor,
+              roughness: 0.7,
+              metalness: 0.1
+            });
+          } else {
+            mesh.material = new THREE.MeshStandardMaterial({
+              color: topColor,
+              roughness: 0.5
+            });
           }
         }
       });
 
-      // 2. Initialize AnimationMixer on the base model
+      // 2. Build 3D Outfit Clothing Geometries (Shirt, Pants/Skirt, Collar/Gele)
+      this.attachOutfitClothingMeshes(characterData, topColor, bottomColor);
+
+      // 3. Initialize AnimationMixer
       this.mixer = new THREE.AnimationMixer(baseFbx);
 
-      // 3. Load animation clips
+      // 4. Load animation clips
       const animFiles: { state: CharacterState; file: string }[] = [
         { state: 'idle', file: 'Idle.fbx' },
         { state: 'walk', file: 'Walking.fbx' },
@@ -81,6 +77,8 @@ export class AnimatedCharacterController {
             const clip = animFbx.animations[0];
             clip.name = anim.state;
             const action = this.mixer.clipAction(clip);
+            action.enabled = true;
+            action.setLoop(THREE.LoopRepeat, Infinity);
             this.actions.set(anim.state, action);
           }
         } catch (e) {
@@ -88,10 +86,11 @@ export class AnimatedCharacterController {
         }
       }
 
-      // Start with idle action
+      // Start with idle action immediately
       const idleAction = this.actions.get('idle');
       if (idleAction) {
-        idleAction.play();
+        idleAction.reset().setEffectiveWeight(1.0).play();
+        this.mixer.update(0.01);
       }
 
       this.isLoaded = true;
@@ -100,7 +99,6 @@ export class AnimatedCharacterController {
       this.buildProceduralFallback(characterData, isLocalPlayer);
     }
 
-    // Add local player indicator ring
     if (isLocalPlayer) {
       const ringGeo = new THREE.RingGeometry(0.35, 0.4, 32);
       const ringMat = new THREE.MeshBasicMaterial({
@@ -116,28 +114,82 @@ export class AnimatedCharacterController {
     }
   }
 
+  private attachOutfitClothingMeshes(
+    characterData: CharacterData | undefined,
+    topColor: THREE.Color,
+    bottomColor: THREE.Color
+  ) {
+    // Clear previous clothing group items
+    while (this.clothingGroup.children.length > 0) {
+      this.clothingGroup.remove(this.clothingGroup.children[0]);
+    }
+
+    const topMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
+    const bottomMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
+
+    const isFemale = characterData?.gender === 'Female';
+
+    // 1. Shirt / Top Torso Wrap
+    const shirtMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.48, 0.26), topMat);
+    shirtMesh.position.set(0, 0.95, 0);
+    this.clothingGroup.add(shirtMesh);
+
+    // Collar detail
+    const collarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.08, 12), topMat);
+    collarMesh.position.set(0, 1.2, 0);
+    this.clothingGroup.add(collarMesh);
+
+    if (isFemale) {
+      // Female Skirt / Peplum Wrapper
+      const skirtMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 0.45, 16), bottomMat);
+      skirtMesh.position.set(0, 0.55, 0);
+      this.clothingGroup.add(skirtMesh);
+
+      // Traditional Gele / Headwrap accent
+      const geleMesh = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.05, 8, 16), topMat);
+      geleMesh.rotation.x = Math.PI / 3;
+      geleMesh.position.set(0, 1.32, 0);
+      this.clothingGroup.add(geleMesh);
+    } else {
+      // Male Trousers / Shorts
+      const leftLegPant = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.5, 12), bottomMat);
+      leftLegPant.position.set(-0.1, 0.45, 0);
+      this.clothingGroup.add(leftLegPant);
+
+      const rightLegPant = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.5, 12), bottomMat);
+      rightLegPant.position.set(0.1, 0.45, 0);
+      this.clothingGroup.add(rightLegPant);
+
+      // Traditional Cap / Fila accent
+      const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.1, 12), bottomMat);
+      capMesh.position.set(0, 1.34, 0);
+      capMesh.rotation.z = -0.15;
+      this.clothingGroup.add(capMesh);
+    }
+  }
+
   private buildProceduralFallback(characterData?: CharacterData, isLocalPlayer: boolean = false) {
     const skinMat = new THREE.MeshStandardMaterial({ color: characterData?.skin_tone || '#8d5524', roughness: 0.7 });
     const topMat = new THREE.MeshStandardMaterial({ color: characterData?.clothing?.top || '#2563eb', roughness: 0.5 });
     const bottomMat = new THREE.MeshStandardMaterial({ color: characterData?.clothing?.bottom || '#1e293b', roughness: 0.6 });
 
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.2), topMat);
-    torso.position.y = 0.65;
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.55, 0.22), topMat);
+    torso.position.y = 0.75;
     this.group.add(torso);
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), skinMat);
-    head.position.y = 1.05;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), skinMat);
+    head.position.y = 1.15;
     this.group.add(head);
 
-    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.45), bottomMat);
-    leftLeg.position.set(-0.08, 0.22, 0);
+    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.5), bottomMat);
+    leftLeg.position.set(-0.09, 0.25, 0);
     this.group.add(leftLeg);
 
-    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.45), bottomMat);
-    rightLeg.position.set(0.08, 0.22, 0);
+    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.5), bottomMat);
+    rightLeg.position.set(0.09, 0.25, 0);
     this.group.add(rightLeg);
 
-    this.group.scale.set(0.6, 0.6, 0.6);
+    this.group.scale.set(0.65, 0.65, 0.65);
   }
 
   public setState(newState: CharacterState) {
@@ -161,7 +213,6 @@ export class AnimatedCharacterController {
   }
 
   public update(delta: number, isMoving: boolean, isSprinting: boolean, isJumping: boolean = false) {
-    // 1. Determine target animation state
     let targetState: CharacterState = 'idle';
     if (isJumping) {
       targetState = 'jump';
@@ -171,12 +222,10 @@ export class AnimatedCharacterController {
 
     this.setState(targetState);
 
-    // 2. Update AnimationMixer
     if (this.mixer) {
       this.mixer.update(delta);
     }
 
-    // 3. Smooth character orientation rotation toward target movement direction
     let diff = this.targetRotationY - this.currentRotationY;
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;

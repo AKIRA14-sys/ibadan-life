@@ -20,11 +20,11 @@ export interface DistrictZone {
 }
 
 export const IBADAN_DISTRICTS: DistrictZone[] = [
-  { name: 'Dugbe Commercial Hub', center: [0, 0], radius: 45, description: 'The bustling central commercial & trading heart of Ibadan.', landmarks: ['Dugbe Market Center', 'Mama Bukka Canteen', 'Commercial Towers'] },
-  { name: 'Iwo Road Interchange', center: [80, 0], radius: 35, description: 'Bustling transport hub and commercial gateway.', landmarks: ['Motor Park', 'Commercial Plaza'] },
-  { name: 'Bodija Estate', center: [0, 80], radius: 38, description: 'Upscale residential neighborhood and market.', landmarks: ['Bodija International Market', 'Housing Estate'] },
-  { name: 'Challenge Interchange', center: [-80, -20], radius: 30, description: 'Major interchange with bustling retail shops.', landmarks: ['Challenge Roundabout', 'Shopping Mall'] },
-  { name: 'Mapo Hill', center: [50, -60], radius: 35, description: 'Ancient heart of Ibadan and historic royal palace.', landmarks: ['Mapo Hall Complex', 'Oja Oba Central Market'] }
+  { name: 'Dugbe Commercial Hub', center: [0, 0], radius: 60, description: 'The bustling commercial & trading center of Ibadan.', landmarks: ['Dugbe Market Center', 'Mama Bukka Canteen', 'Commercial Plaza'] },
+  { name: 'Iwo Road Transport Hub', center: [220, 0], radius: 55, description: 'Major interstate motor park and vibrant market.', landmarks: ['Iwo Road Motor Park', 'Gateway Mall'] },
+  { name: 'Bodija Market & Estate', center: [120, 120], radius: 60, description: 'Upscale residential GRA and international produce market.', landmarks: ['Bodija Market Stalls', 'Bodija Housing Estate'] },
+  { name: 'Oke-Ado Schools Corridor', center: [-150, -100], radius: 50, description: 'Historic educational and craft artisan quarter.', landmarks: ['Oke-Ado High School', 'Artisan Workshop Depot'] },
+  { name: 'Jericho Residential Zone', center: [-220, 100], radius: 55, description: 'Lush, exclusive high-brow residential neighborhood.', landmarks: ['Jericho GRA Estates', 'Parks & Recreation'] }
 ];
 
 export class IbadanWorld {
@@ -32,20 +32,20 @@ export class IbadanWorld {
   public colliders: WorldCollider[] = [];
   public streetlights: THREE.SpotLight[] = [];
   public streetlightBulbs: THREE.Mesh[] = [];
-  public windowMaterials: THREE.MeshStandardMaterial[] = [];
 
   private sunLight!: THREE.DirectionalLight;
   private ambientLight!: THREE.AmbientLight;
   private hemiLight!: THREE.HemisphereLight;
 
   private currentLagosHour: number = 12;
-  private timeFactor: number = 0; // 0 to 1 representing 00:00 to 24:00
+  private timeFactor: number = 0;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.initLighting();
-    this.buildTerrainAndRoads();
+    this.buildTerrainAndRoadNetwork();
     this.buildDugbeStreetDetails();
+    this.buildBodijaMarketDetails();
     this.buildEnterableShopInterior();
     this.loadKenneyBuildingModels();
     this.loadKenneyVehicleProps();
@@ -53,34 +53,34 @@ export class IbadanWorld {
   }
 
   private initLighting() {
-    this.ambientLight = new THREE.AmbientLight(0xfffbeb, 0.6);
+    this.ambientLight = new THREE.AmbientLight(0xfffbeb, 0.85);
     this.scene.add(this.ambientLight);
 
-    this.hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x166534, 0.4);
+    this.hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x166534, 0.6);
     this.scene.add(this.hemiLight);
 
-    this.sunLight = new THREE.DirectionalLight(0xffedd5, 1.2);
-    this.sunLight.position.set(60, 100, 40);
+    this.sunLight = new THREE.DirectionalLight(0xffedd5, 1.3);
+    this.sunLight.position.set(120, 150, 80);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 1024;
-    this.sunLight.shadow.mapSize.height = 1024;
+    this.sunLight.shadow.mapSize.width = 2048;
+    this.sunLight.shadow.mapSize.height = 2048;
     this.sunLight.shadow.camera.near = 1;
-    this.sunLight.shadow.camera.far = 250;
-    const d = 80;
+    this.sunLight.shadow.camera.far = 400;
+    const d = 200;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
     this.scene.add(this.sunLight);
 
-    this.scene.fog = new THREE.FogExp2(0x0f172a, 0.008);
+    this.scene.fog = new THREE.FogExp2(0x38bdf8, 0.003);
   }
 
-  private buildTerrainAndRoads() {
-    // 1. Base grass ground plane
-    const groundGeo = new THREE.PlaneGeometry(500, 500);
+  private buildTerrainAndRoadNetwork() {
+    // 1. Huge Ground Plane (800m x 800m)
+    const groundGeo = new THREE.PlaneGeometry(800, 800);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x15803d, // Nigerian green vegetation
+      color: 0x15803d, // Nigerian green
       roughness: 0.9,
       metalness: 0.05
     });
@@ -90,89 +90,128 @@ export class IbadanWorld {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    // 2. Main Dugbe Avenue Asphalt Road (Running Along X axis: x = -150 to +150, z = 0, width = 14m)
-    const roadGeo = new THREE.PlaneGeometry(300, 14);
-    const roadMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      roughness: 0.8,
-      metalness: 0.1
-    });
-    const mainRoad = new THREE.Mesh(roadGeo, roadMat);
-    mainRoad.rotation.x = -Math.PI / 2;
-    mainRoad.position.set(0, 0.01, 0);
-    mainRoad.receiveShadow = true;
-    this.scene.add(mainRoad);
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8, metalness: 0.1 });
+    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.7 });
+    const gutterMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9 });
 
-    // Yellow center divider line markings
-    for (let x = -140; x <= 140; x += 12) {
-      const dashGeo = new THREE.PlaneGeometry(6, 0.4);
-      const dashMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
-      const dash = new THREE.Mesh(dashGeo, dashMat);
+    // 2. Main Dugbe - Iwo Road Highway (X-axis: x = -350 to +350, z = 0, width = 14m)
+    const mainHwy = new THREE.Mesh(new THREE.PlaneGeometry(700, 14), roadMat);
+    mainHwy.rotation.x = -Math.PI / 2;
+    mainHwy.position.set(0, 0.01, 0);
+    mainHwy.receiveShadow = true;
+    this.scene.add(mainHwy);
+
+    // Highway yellow dividers
+    for (let x = -340; x <= 340; x += 14) {
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(7, 0.4), new THREE.MeshBasicMaterial({ color: 0xeab308 }));
       dash.rotation.x = -Math.PI / 2;
       dash.position.set(x, 0.02, 0);
       this.scene.add(dash);
     }
 
-    // 3. Concrete Gutters / Drainage Channels (Sobole) along both edges of main road (z = 7m and z = -7m)
-    const gutterGeo = new THREE.BoxGeometry(300, 0.4, 1.2);
-    const gutterMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9 });
+    // Concrete gutters along main highway
+    const gutter1 = new THREE.Mesh(new THREE.BoxGeometry(700, 0.4, 1.2), gutterMat);
+    gutter1.position.set(0, -0.15, 7.6);
+    this.scene.add(gutter1);
 
-    const gutterNorth = new THREE.Mesh(gutterGeo, gutterMat);
-    gutterNorth.position.set(0, -0.15, 7.6);
-    this.scene.add(gutterNorth);
+    const gutter2 = new THREE.Mesh(new THREE.BoxGeometry(700, 0.4, 1.2), gutterMat);
+    gutter2.position.set(0, -0.15, -7.6);
+    this.scene.add(gutter2);
 
-    const gutterSouth = new THREE.Mesh(gutterGeo, gutterMat);
-    gutterSouth.position.set(0, -0.15, -7.6);
-    this.scene.add(gutterSouth);
+    // Concrete Sidewalks along main highway
+    const swNorth = new THREE.Mesh(new THREE.PlaneGeometry(700, 4), sidewalkMat);
+    swNorth.rotation.x = -Math.PI / 2;
+    swNorth.position.set(0, 0.03, 10.2);
+    swNorth.receiveShadow = true;
+    this.scene.add(swNorth);
 
-    // 4. Pedestrian Concrete Sidewalks (z = 8.2m to 12.2m & z = -8.2m to -12.2m)
-    const sidewalkGeo = new THREE.PlaneGeometry(300, 4);
-    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.7 });
+    const swSouth = new THREE.Mesh(new THREE.PlaneGeometry(700, 4), sidewalkMat);
+    swSouth.rotation.x = -Math.PI / 2;
+    swSouth.position.set(0, 0.03, -10.2);
+    swSouth.receiveShadow = true;
+    this.scene.add(swSouth);
 
-    const sidewalkNorth = new THREE.Mesh(sidewalkGeo, sidewalkMat);
-    sidewalkNorth.rotation.x = -Math.PI / 2;
-    sidewalkNorth.position.set(0, 0.03, 10.2);
-    sidewalkNorth.receiveShadow = true;
-    this.scene.add(sidewalkNorth);
+    // 3. Connecting District Avenue Roads
+    // Bodija Avenue (Z-axis: x = 120, z = -100 to +250, width = 12m)
+    const bodijaAvenue = new THREE.Mesh(new THREE.PlaneGeometry(12, 350), roadMat);
+    bodijaAvenue.rotation.x = -Math.PI / 2;
+    bodijaAvenue.position.set(120, 0.01, 75);
+    bodijaAvenue.receiveShadow = true;
+    this.scene.add(bodijaAvenue);
 
-    const sidewalkSouth = new THREE.Mesh(sidewalkGeo, sidewalkMat);
-    sidewalkSouth.rotation.x = -Math.PI / 2;
-    sidewalkSouth.position.set(0, 0.03, -10.2);
-    sidewalkSouth.receiveShadow = true;
-    this.scene.add(sidewalkSouth);
+    // Oke-Ado Avenue (Z-axis: x = -150, z = -250 to +100, width = 12m)
+    const okeAdoAvenue = new THREE.Mesh(new THREE.PlaneGeometry(12, 350), roadMat);
+    okeAdoAvenue.rotation.x = -Math.PI / 2;
+    okeAdoAvenue.position.set(-150, 0.01, -75);
+    okeAdoAvenue.receiveShadow = true;
+    this.scene.add(okeAdoAvenue);
 
-    // 5. Cross roads intersecting Dugbe Avenue
-    const crossRoadGeo = new THREE.PlaneGeometry(12, 160);
-    const crossRoad1 = new THREE.Mesh(crossRoadGeo, roadMat);
-    crossRoad1.rotation.x = -Math.PI / 2;
-    crossRoad1.position.set(60, 0.01, 0);
-    crossRoad1.receiveShadow = true;
-    this.scene.add(crossRoad1);
-
-    const crossRoad2 = new THREE.Mesh(crossRoadGeo, roadMat);
-    crossRoad2.rotation.x = -Math.PI / 2;
-    crossRoad2.position.set(-60, 0.01, 0);
-    crossRoad2.receiveShadow = true;
-    this.scene.add(crossRoad2);
+    // Jericho Road (X-axis: z = 100, x = -300 to +50)
+    const jerichoRoad = new THREE.Mesh(new THREE.PlaneGeometry(350, 10), roadMat);
+    jerichoRoad.rotation.x = -Math.PI / 2;
+    jerichoRoad.position.set(-125, 0.01, 100);
+    jerichoRoad.receiveShadow = true;
+    this.scene.add(jerichoRoad);
   }
 
   private buildDugbeStreetDetails() {
-    // 1. Streetlights along Dugbe Avenue
-    for (let x = -120; x <= 120; x += 30) {
-      if (Math.abs(x - 60) < 10 || Math.abs(x + 60) < 10) continue; // skip intersections
+    // Streetlights along Dugbe Avenue
+    for (let x = -280; x <= 280; x += 35) {
+      if (Math.abs(x - 120) < 12 || Math.abs(x + 150) < 12) continue; // skip road intersections
 
       this.createStreetlight(x, 11.5);
       this.createStreetlight(x, -11.5);
     }
 
-    // 2. Signboards & Kiosks
-    this.createRoadsideKiosk(-35, 11, 'OGUNPA PROVISIONS STORE', 0xf59e0b);
-    this.createRoadsideKiosk(25, -11, 'BODIJA RECHARGE & DATA', 0x3b82f6);
-    this.createRoadsideKiosk(45, 11, 'ELECTRONICS REPAIR HUB', 0x10b981);
+    // Kiosks and roadside shops along Dugbe
+    this.createRoadsideKiosk(-35, 11.5, 'OGUNPA PROVISIONS STORE', 0xf59e0b);
+    this.createRoadsideKiosk(25, -11.5, 'BODIJA RECHARGE & DATA', 0x3b82f6);
+    this.createRoadsideKiosk(65, 11.5, 'ELECTRONICS REPAIR HUB', 0x10b981);
 
-    // 3. Compound perimeter walls with gates
-    this.createCompoundWall(-90, 22, 40, 20);
-    this.createCompoundWall(90, -22, 40, 20);
+    // Compound perimeter walls with gates
+    this.createCompoundWall(-80, 24, 45, 22);
+    this.createCompoundWall(80, -24, 45, 22);
+  }
+
+  private buildBodijaMarketDetails() {
+    // Market stalls in Bodija Market area
+    const marketX = 120;
+    const marketZ = 120;
+
+    for (let i = -2; i <= 2; i++) {
+      for (let j = -2; j <= 2; j++) {
+        if (i === 0 && j === 0) continue;
+        this.createMarketStall(marketX + i * 8, marketZ + j * 8);
+      }
+    }
+  }
+
+  private createMarketStall(x: number, z: number) {
+    const stallGroup = new THREE.Group();
+    stallGroup.position.set(x, 0, z);
+
+    // Table / Stand
+    const tableMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.8 });
+    const table = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 1.4), tableMat);
+    table.position.y = 0.45;
+    table.castShadow = true;
+    stallGroup.add(table);
+
+    // Umbrella Canopy
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4), poleMat);
+    pole.position.set(0, 1.2, 0);
+    stallGroup.add(pole);
+
+    const canopyMat = new THREE.MeshStandardMaterial({ color: Math.random() > 0.5 ? 0xd97706 : 0x2563eb, roughness: 0.4 });
+    const canopy = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.6, 8), canopyMat);
+    canopy.position.set(0, 2.4, 0);
+    stallGroup.add(canopy);
+
+    this.scene.add(stallGroup);
+
+    const box = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x, 0.8, z), new THREE.Vector3(2.4, 1.8, 1.6));
+    this.colliders.push({ type: 'box', box });
   }
 
   private createStreetlight(x: number, z: number) {
@@ -210,7 +249,6 @@ export class IbadanWorld {
 
     this.scene.add(poleGroup);
 
-    // Add collider for pole
     this.colliders.push({
       type: 'cylinder',
       center: new THREE.Vector3(x, 0, z),
@@ -223,14 +261,12 @@ export class IbadanWorld {
     const kioskGroup = new THREE.Group();
     kioskGroup.position.set(x, 0, z);
 
-    // Kiosk body structure
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(3, 2.4, 2.5), bodyMat);
     body.position.y = 1.2;
     body.castShadow = true;
     kioskGroup.add(body);
 
-    // Roof / Canopy
     const roofMat = new THREE.MeshStandardMaterial({ color: bannerColorHex, roughness: 0.5 });
     const roof = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.2, 2.9), roofMat);
     roof.position.y = 2.5;
@@ -238,7 +274,6 @@ export class IbadanWorld {
 
     this.scene.add(kioskGroup);
 
-    // Bounding collider
     const box = new THREE.Box3();
     box.setFromCenterAndSize(new THREE.Vector3(x, 1.2, z), new THREE.Vector3(3.2, 2.5, 2.7));
     this.colliders.push({ type: 'box', box });
@@ -248,16 +283,13 @@ export class IbadanWorld {
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.9 });
     const wallGroup = new THREE.Group();
 
-    // Wall height
-    const h = 2.2;
-    const t = 0.3; // thickness
+    const h = 2.4;
+    const t = 0.3;
 
-    // North wall
     const wN = new THREE.Mesh(new THREE.BoxGeometry(width, h, t), wallMat);
     wN.position.set(centerX, h / 2, centerZ - depth / 2);
     wallGroup.add(wN);
 
-    // South wall (with gate opening)
     const wS1 = new THREE.Mesh(new THREE.BoxGeometry(width * 0.4, h, t), wallMat);
     wS1.position.set(centerX - width * 0.3, h / 2, centerZ + depth / 2);
     wallGroup.add(wS1);
@@ -266,7 +298,6 @@ export class IbadanWorld {
     wS2.position.set(centerX + width * 0.3, h / 2, centerZ + depth / 2);
     wallGroup.add(wS2);
 
-    // East & West walls
     const wE = new THREE.Mesh(new THREE.BoxGeometry(t, h, depth), wallMat);
     wE.position.set(centerX + width / 2, h / 2, centerZ);
     wallGroup.add(wE);
@@ -277,7 +308,6 @@ export class IbadanWorld {
 
     this.scene.add(wallGroup);
 
-    // Add colliders for walls
     const boxN = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(centerX, h / 2, centerZ - depth / 2), new THREE.Vector3(width, h, t));
     const boxS1 = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(centerX - width * 0.3, h / 2, centerZ + depth / 2), new THREE.Vector3(width * 0.4, h, t));
     const boxS2 = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(centerX + width * 0.3, h / 2, centerZ + depth / 2), new THREE.Vector3(width * 0.4, h, t));
@@ -288,12 +318,11 @@ export class IbadanWorld {
   }
 
   private buildEnterableShopInterior() {
-    // "MAMA BUKKA CANTEEN" at (x = -15, z = 14)
     const shopX = -15;
     const shopZ = 15;
     const width = 8;
     const depth = 7;
-    const height = 3.2;
+    const height = 3.5;
 
     const shopMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.8 });
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.7 });
@@ -301,26 +330,21 @@ export class IbadanWorld {
     const shopGroup = new THREE.Group();
     shopGroup.position.set(shopX, 0, shopZ);
 
-    // Walls with entrance doorway on front wall (south, towards street z = 11.5)
     const t = 0.25;
     const doorWidth = 2.2;
 
-    // Back wall
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(width, height, t), shopMat);
     backWall.position.set(0, height / 2, -depth / 2);
     shopGroup.add(backWall);
 
-    // Left wall
     const leftWall = new THREE.Mesh(new THREE.BoxGeometry(t, height, depth), shopMat);
     leftWall.position.set(-width / 2, height / 2, 0);
     shopGroup.add(leftWall);
 
-    // Right wall
     const rightWall = new THREE.Mesh(new THREE.BoxGeometry(t, height, depth), shopMat);
     rightWall.position.set(width / 2, height / 2, 0);
     shopGroup.add(rightWall);
 
-    // Front wall (left segment & right segment leaving doorway in middle)
     const frontSegWidth = (width - doorWidth) / 2;
     const frontWallLeft = new THREE.Mesh(new THREE.BoxGeometry(frontSegWidth, height, t), shopMat);
     frontWallLeft.position.set(-width / 2 + frontSegWidth / 2, height / 2, depth / 2);
@@ -330,32 +354,27 @@ export class IbadanWorld {
     frontWallRight.position.set(width / 2 - frontSegWidth / 2, height / 2, depth / 2);
     shopGroup.add(frontWallRight);
 
-    // Roof
     const roof = new THREE.Mesh(new THREE.BoxGeometry(width + 0.6, 0.3, depth + 0.6), roofMat);
     roof.position.set(0, height + 0.15, 0);
     shopGroup.add(roof);
 
-    // Signboard banner
     const signMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.4 });
     const sign = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.8, 0.15), signMat);
     sign.position.set(0, height - 0.4, depth / 2 + 0.1);
     shopGroup.add(sign);
 
-    // Interior floor
     const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(width - 0.2, depth - 0.2), floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, 0.02, 0);
     shopGroup.add(floor);
 
-    // Interior warm ceiling light
-    const interiorLight = new THREE.PointLight(0xffedd5, 1.5, 10);
+    const interiorLight = new THREE.PointLight(0xffedd5, 1.5, 12);
     interiorLight.position.set(0, height - 0.5, 0);
     shopGroup.add(interiorLight);
 
     this.scene.add(shopGroup);
 
-    // Add wall colliders (leaving doorway open!)
     const boxB = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(shopX, height / 2, shopZ - depth / 2), new THREE.Vector3(width, height, t));
     const boxL = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(shopX - width / 2, height / 2, shopZ), new THREE.Vector3(t, height, depth));
     const boxR = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(shopX + width / 2, height / 2, shopZ), new THREE.Vector3(t, height, depth));
@@ -364,7 +383,6 @@ export class IbadanWorld {
 
     this.colliders.push({ type: 'box', box: boxB }, { type: 'box', box: boxL }, { type: 'box', box: boxR }, { type: 'box', box: boxFL }, { type: 'box', box: boxFR });
 
-    // Load furniture inside Mama Bukka Canteen
     const gltfLoader = new GLTFLoader();
     const furnPath = '/assets/kenney/furniture/Models/GLTF format/';
 
@@ -399,22 +417,29 @@ export class IbadanWorld {
       'building-type-a.glb', 'building-type-b.glb', 'building-type-c.glb',
       'building-type-d.glb', 'building-type-e.glb', 'building-type-f.glb',
       'building-type-g.glb', 'building-type-h.glb', 'building-type-i.glb',
-      'building-type-j.glb', 'building-type-k.glb', 'building-type-l.glb'
+      'building-type-j.glb', 'building-type-k.glb', 'building-type-l.glb',
+      'building-type-m.glb', 'building-type-n.glb', 'building-type-o.glb'
     ];
 
-    // Place building models along Dugbe street and cross streets
     const placements = [
-      { x: -50, z: 18, rot: 0, modelIdx: 0, scale: 3.5 },
-      { x: -80, z: 18, rot: 0, modelIdx: 1, scale: 3.5 },
-      { x: 15, z: 18, rot: 0, modelIdx: 2, scale: 3.5 },
-      { x: 45, z: 18, rot: 0, modelIdx: 3, scale: 3.5 },
-      { x: 85, z: 18, rot: 0, modelIdx: 4, scale: 3.5 },
+      { x: -50, z: 18, rot: 0, modelIdx: 0, scale: 3.8 },
+      { x: -90, z: 18, rot: 0, modelIdx: 1, scale: 3.8 },
+      { x: 15, z: 18, rot: 0, modelIdx: 2, scale: 3.8 },
+      { x: 55, z: 18, rot: 0, modelIdx: 3, scale: 3.8 },
+      { x: 95, z: 18, rot: 0, modelIdx: 4, scale: 3.8 },
+      { x: 180, z: 18, rot: 0, modelIdx: 5, scale: 3.8 },
 
-      { x: -45, z: -18, rot: Math.PI, modelIdx: 5, scale: 3.5 },
-      { x: -75, z: -18, rot: Math.PI, modelIdx: 6, scale: 3.5 },
-      { x: 15, z: -18, rot: Math.PI, modelIdx: 7, scale: 3.5 },
-      { x: 45, z: -18, rot: Math.PI, modelIdx: 8, scale: 3.5 },
-      { x: 85, z: -18, rot: Math.PI, modelIdx: 9, scale: 3.5 },
+      { x: -45, z: -18, rot: Math.PI, modelIdx: 6, scale: 3.8 },
+      { x: -85, z: -18, rot: Math.PI, modelIdx: 7, scale: 3.8 },
+      { x: 15, z: -18, rot: Math.PI, modelIdx: 8, scale: 3.8 },
+      { x: 55, z: -18, rot: Math.PI, modelIdx: 9, scale: 3.8 },
+      { x: 95, z: -18, rot: Math.PI, modelIdx: 10, scale: 3.8 },
+      { x: 180, z: -18, rot: Math.PI, modelIdx: 11, scale: 3.8 },
+
+      // Bodija & Jericho buildings
+      { x: 145, z: 90, rot: Math.PI / 2, modelIdx: 12, scale: 3.8 },
+      { x: 145, z: 140, rot: Math.PI / 2, modelIdx: 13, scale: 3.8 },
+      { x: -200, z: 80, rot: -Math.PI / 2, modelIdx: 14, scale: 3.8 },
     ];
 
     placements.forEach((p) => {
@@ -436,7 +461,6 @@ export class IbadanWorld {
 
           this.scene.add(model);
 
-          // Add bounding box collider
           const bbox = new THREE.Box3().setFromObject(model);
           this.colliders.push({ type: 'box', box: bbox });
         },
@@ -455,6 +479,7 @@ export class IbadanWorld {
       { name: 'police.glb', x: 20, z: 4.5, rot: Math.PI },
       { name: 'delivery.glb', x: -40, z: -4.5, rot: 0 },
       { name: 'hatchback.glb', x: 50, z: -4.5, rot: 0 },
+      { name: 'garbage.glb', x: 200, z: 4.5, rot: Math.PI },
     ];
 
     vehicles.forEach((v) => {
@@ -464,7 +489,7 @@ export class IbadanWorld {
           const car = gltf.scene;
           car.position.set(v.x, 0.05, v.z);
           car.rotation.y = v.rot;
-          car.scale.set(1.8, 1.8, 1.8);
+          car.scale.set(2.0, 2.0, 2.0);
 
           car.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
@@ -484,7 +509,6 @@ export class IbadanWorld {
   }
 
   public updateLagosTime() {
-    // Determine Africa/Lagos current time (UTC+1)
     const now = new Date();
     const lagosTimeString = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Africa/Lagos',
@@ -504,32 +528,28 @@ export class IbadanWorld {
   }
 
   private applyLightingForTime(factor: number) {
-    // 0.0 = midnight, 0.25 = 06:00 (dawn), 0.5 = 12:00 (noon), 0.75 = 18:00 (sunset)
     const angle = factor * Math.PI * 2 - Math.PI / 2;
 
-    const sunDistance = 150;
+    const sunDistance = 200;
     this.sunLight.position.x = Math.cos(angle) * sunDistance;
     this.sunLight.position.y = Math.sin(angle) * sunDistance;
-    this.sunLight.position.z = 40;
+    this.sunLight.position.z = 80;
 
     const isNight = factor < 0.22 || factor > 0.78;
 
     if (isNight) {
-      // Nighttime
       this.scene.background = new THREE.Color(0x0a0f1d);
-      this.ambientLight.color.setHex(0x1e293b);
-      this.ambientLight.intensity = 0.35;
-      this.hemiLight.intensity = 0.2;
-      this.sunLight.intensity = 0.1;
-      this.scene.fog = new THREE.FogExp2(0x0a0f1d, 0.012);
+      this.ambientLight.color.setHex(0x475569);
+      this.ambientLight.intensity = 0.65;
+      this.hemiLight.intensity = 0.45;
+      this.sunLight.intensity = 0.2;
+      this.scene.fog = new THREE.FogExp2(0x0a0f1d, 0.008);
 
-      // Turn on streetlights
       this.streetlights.forEach((s) => (s.intensity = 20));
       this.streetlightBulbs.forEach((b) => {
         (b.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.0;
       });
     } else if (factor >= 0.22 && factor < 0.3) {
-      // Dawn / Sunrise
       this.scene.background = new THREE.Color(0xfba518);
       this.ambientLight.color.setHex(0xfeb2b2);
       this.ambientLight.intensity = 0.7;
@@ -542,7 +562,6 @@ export class IbadanWorld {
         (b.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.3;
       });
     } else if (factor >= 0.7 && factor <= 0.78) {
-      // Sunset
       this.scene.background = new THREE.Color(0xc2410c);
       this.ambientLight.color.setHex(0xfdba74);
       this.ambientLight.intensity = 0.7;
@@ -555,13 +574,12 @@ export class IbadanWorld {
         (b.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
       });
     } else {
-      // Daytime
       this.scene.background = new THREE.Color(0x38bdf8);
       this.ambientLight.color.setHex(0xfffbeb);
       this.ambientLight.intensity = 0.85;
       this.hemiLight.intensity = 0.6;
       this.sunLight.intensity = 1.3;
-      this.scene.fog = new THREE.FogExp2(0x38bdf8, 0.004);
+      this.scene.fog = new THREE.FogExp2(0x38bdf8, 0.003);
 
       this.streetlights.forEach((s) => (s.intensity = 0));
       this.streetlightBulbs.forEach((b) => {
