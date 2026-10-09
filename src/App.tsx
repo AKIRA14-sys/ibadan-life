@@ -5,9 +5,13 @@ import { GameDataService } from './services/gameData';
 import { RealtimeService } from './services/realtime';
 import { IbadanWorld } from './game/IbadanWorld';
 import { CameraManager } from './game/CameraManager';
+import { AnimatedCharacterController } from './game/AnimatedCharacter';
+import { PhysicsController } from './game/PhysicsController';
+import { NPCManager } from './game/NPCManager';
 import { CharacterMeshBuilder } from './game/CharacterModel';
 import { CharacterCreator } from './components/CharacterCreator';
 import { MobileControls } from './components/MobileControls';
+import { OrientationPrompt } from './components/OrientationPrompt';
 import { InteractionMenu } from './components/InteractionMenu';
 import { ChatOverlay } from './components/ChatOverlay';
 import { WalletHUD } from './components/WalletHUD';
@@ -32,10 +36,12 @@ export function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [remotePlayers, setRemotePlayers] = useState<NetworkPlayer[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [currentDistrict, setCurrentDistrict] = useState('Iwo Road');
+  const [currentDistrict, setCurrentDistrict] = useState('Dugbe Commercial Hub');
+  const [lagosTimeDisplay, setLagosTimeDisplay] = useState('12:00 WAT (Day)');
 
   const [activeModal, setActiveModal] = useState<'jobs' | 'market' | 'housing' | 'business' | 'map' | null>(null);
   const [selectedInteractionPlayer, setSelectedInteractionPlayer] = useState<NetworkPlayer | null>(null);
+  const [nearestInteraction, setNearestInteraction] = useState<string | null>(null);
 
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [userInventory, setUserInventory] = useState<any[]>([]);
@@ -44,7 +50,10 @@ export function App() {
   const [userBusinesses, setUserBusinesses] = useState<any[]>([]);
 
   const realtimeRef = useRef<RealtimeService | null>(null);
-  const localPlayerMeshRef = useRef<THREE.Group | null>(null);
+  const localPlayerControllerRef = useRef<AnimatedCharacterController | null>(null);
+  const physicsRef = useRef<PhysicsController>(new PhysicsController());
+  const npcManagerRef = useRef<NPCManager | null>(null);
+
   const remotePlayerMeshesRef = useRef<Map<string, THREE.Group>>(new Map());
   const cameraManagerRef = useRef<CameraManager | null>(null);
   const worldRef = useRef<IbadanWorld | null>(null);
@@ -64,7 +73,7 @@ export function App() {
           wallet: existing.wallet,
           background: existing.playerPrivate.hidden_background
         });
-        setCurrentDistrict(existing.player.current_district || 'Iwo Road');
+        setCurrentDistrict(existing.player.current_district || 'Dugbe Commercial Hub');
       }
 
       const [items, jobs, props] = await Promise.all([
@@ -102,23 +111,27 @@ export function App() {
       wallet: created.wallet,
       background: data.background
     });
-    setCurrentDistrict(created.character.starting_neighborhood || 'Iwo Road');
+    setCurrentDistrict(created.character.starting_neighborhood || 'Dugbe Commercial Hub');
     setIsLoading(false);
   };
 
   useEffect(() => {
     if (!playerData || !mountRef.current) return;
 
-    const width = mountRef.current.clientWidth;
-    const height = mountRef.current.clientHeight;
+    const width = mountRef.current.clientWidth || window.innerWidth;
+    const height = mountRef.current.clientHeight || window.innerHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0f172a);
-    scene.fog = new THREE.FogExp2(0x0f172a, 0.012);
+    scene.background = new THREE.Color(0x38bdf8); // Sky blue background default
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
     mountRef.current.appendChild(renderer.domElement);
 
     const cameraMgr = new CameraManager(width / height);
@@ -127,10 +140,16 @@ export function App() {
     const world = new IbadanWorld(scene);
     worldRef.current = world;
 
-    const localMesh = CharacterMeshBuilder.createCharacterMesh(playerData.character, true);
-    scene.add(localMesh);
-    localPlayerMeshRef.current = localMesh;
-    cameraMgr.setTarget(localMesh);
+    const npcMgr = new NPCManager(scene);
+    npcManagerRef.current = npcMgr;
+    npcMgr.spawnPresetNPCs();
+
+    const localController = new AnimatedCharacterController();
+    localPlayerControllerRef.current = localController;
+    localController.loadCharacter(playerData.character, true).then(() => {
+      cameraMgr.setTarget(localController.group);
+    });
+    scene.add(localController.group);
 
     const realtime = new RealtimeService(
       currentDistrict,
@@ -149,44 +168,94 @@ export function App() {
 
     let animationFrameId: number;
     let clock = new THREE.Clock();
+    let timeAccumulator = 0;
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
-      if (localPlayerMeshRef.current && cameraManagerRef.current) {
+      timeAccumulator += delta;
+      if (timeAccumulator > 10.0) { // update time of day periodically
+        timeAccumulator = 0;
+        world.updateLagosTime();
+        setLagosTimeDisplay(world.getFormattedLagosTime());
+      }
+
+      if (localPlayerControllerRef.current && cameraManagerRef.current) {
+        const localGroup = localPlayerControllerRef.current.group;
         const move = moveVectorRef.current;
-        if (move.x !== 0 || move.y !== 0) {
-          const speed = (isSprintingRef.current ? 7.5 : 4.5) * delta;
+        const isMoving = move.x !== 0 || move.y !== 0;
+
+        if (isMoving) {
+          const speedMultiplier = isSprintingRef.current ? 7.5 : 4.2;
           const yaw = cameraManagerRef.current.getYaw();
 
           const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
           const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).normalize();
 
-          const dir = new THREE.Vector3()
+          const moveDir = new THREE.Vector3()
             .addScaledVector(right, move.x)
             .addScaledVector(forward, -move.y)
             .normalize();
 
-          localPlayerMeshRef.current.position.addScaledVector(dir, speed);
-          localPlayerMeshRef.current.rotation.y = Math.atan2(dir.x, dir.z);
+          const desiredVelocity = moveDir.multiplyScalar(speedMultiplier * delta);
+
+          // Apply physics & collision sliding
+          physicsRef.current.update(
+            localGroup.position,
+            desiredVelocity,
+            delta,
+            world.colliders
+          );
+
+          const moveAngle = Math.atan2(moveDir.x, moveDir.z);
+          localPlayerControllerRef.current.setTargetRotation(moveAngle);
 
           realtimeRef.current?.sendTransform(
-            [localPlayerMeshRef.current.position.x, localPlayerMeshRef.current.position.y, localPlayerMeshRef.current.position.z],
-            localPlayerMeshRef.current.rotation.y
+            [localGroup.position.x, localGroup.position.y, localGroup.position.z],
+            localGroup.rotation.y
           );
 
           const district = world.getDistrictAtPosition(
-            localPlayerMeshRef.current.position.x,
-            localPlayerMeshRef.current.position.z
+            localGroup.position.x,
+            localGroup.position.z
           );
           if (district !== currentDistrict) {
             setCurrentDistrict(district);
             realtimeRef.current?.changeDistrict(district);
           }
+        } else {
+          physicsRef.current.update(
+            localGroup.position,
+            new THREE.Vector3(),
+            delta,
+            world.colliders
+          );
+        }
+
+        // Update local character animation state
+        localPlayerControllerRef.current.update(
+          delta,
+          isMoving,
+          isSprintingRef.current,
+          physicsRef.current.isJumping
+        );
+
+        // Proximity checks for interactions
+        const npcMatch = npcMgr.getNearestNPC(localGroup.position, 3.0);
+        if (npcMatch) {
+          setNearestInteraction(`Talk to ${npcMatch.data.name} (${npcMatch.data.role})`);
+        } else if (remotePlayers.length > 0) {
+          setNearestInteraction(`Interact with ${remotePlayers[0].display_name}`);
+        } else {
+          setNearestInteraction(null);
         }
       }
 
+      // Update NPCs
+      npcMgr.update(delta);
+
+      // Remote player meshes
       remotePlayers.forEach((rp) => {
         let mesh = remotePlayerMeshesRef.current.get(rp.id);
         if (!mesh) {
@@ -238,6 +307,7 @@ export function App() {
       if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') moveVectorRef.current.x = -1;
       if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') moveVectorRef.current.x = 1;
       if (e.key === 'Shift') isSprintingRef.current = true;
+      if (e.code === 'Space') physicsRef.current.applyJump();
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -348,6 +418,8 @@ export function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gray-950 font-sans">
+      <OrientationPrompt />
+
       <div ref={mountRef} className="absolute inset-0 z-0" />
 
       <div className="fixed top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
@@ -399,14 +471,25 @@ export function App() {
         onMove={(v) => { moveVectorRef.current = v; }}
         onCameraRotate={(d) => { cameraManagerRef.current?.rotateAzimuth(d.x); }}
         onToggleSprint={(s) => { isSprintingRef.current = s; }}
+        onJump={() => physicsRef.current.applyJump()}
         onInteract={() => {
+          if (localPlayerControllerRef.current && npcManagerRef.current) {
+            const pos = localPlayerControllerRef.current.group.position;
+            const npcMatch = npcManagerRef.current.getNearestNPC(pos, 3.5);
+            if (npcMatch) {
+              const text = npcMatch.data.dialogue?.[0] || `Hello from ${npcMatch.data.name}!`;
+              realtimeRef.current?.sendChatMessage(`💬 [${npcMatch.data.name}]: ${text}`);
+              return;
+            }
+          }
           if (remotePlayers.length > 0) {
             setSelectedInteractionPlayer(remotePlayers[0]);
           }
         }}
         onOpenMap={() => setActiveModal('map')}
-        isNearPlayerOrObject={remotePlayers.length > 0}
+        isNearPlayerOrObject={nearestInteraction !== null}
         currentDistrict={currentDistrict}
+        lagosTime={lagosTimeDisplay}
       />
 
       <ChatOverlay
@@ -457,9 +540,9 @@ export function App() {
         <MapModal
           currentDistrict={currentDistrict}
           playerPosition={[
-            localPlayerMeshRef.current?.position.x || 0,
-            localPlayerMeshRef.current?.position.y || 0,
-            localPlayerMeshRef.current?.position.z || 0
+            localPlayerControllerRef.current?.group.position.x || 0,
+            localPlayerControllerRef.current?.group.position.y || 0,
+            localPlayerControllerRef.current?.group.position.z || 0
           ]}
           onClose={() => setActiveModal(null)}
         />
