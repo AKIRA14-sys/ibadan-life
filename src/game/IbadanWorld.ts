@@ -422,19 +422,21 @@ export class IbadanWorld {
     ];
 
     const placements = [
-      { x: -50, z: 18, rot: 0, modelIdx: 0, scale: 3.8 },
-      { x: -90, z: 18, rot: 0, modelIdx: 1, scale: 3.8 },
-      { x: 15, z: 18, rot: 0, modelIdx: 2, scale: 3.8 },
-      { x: 55, z: 18, rot: 0, modelIdx: 3, scale: 3.8 },
-      { x: 95, z: 18, rot: 0, modelIdx: 4, scale: 3.8 },
-      { x: 180, z: 18, rot: 0, modelIdx: 5, scale: 3.8 },
+      { x: -20, z: 18, rot: 0, modelIdx: 0, scale: 3.8 },
+      { x: 0, z: 18, rot: 0, modelIdx: 1, scale: 3.8 },
+      { x: 20, z: 18, rot: 0, modelIdx: 2, scale: 3.8 },
+      { x: -60, z: 18, rot: 0, modelIdx: 3, scale: 3.8 },
+      { x: 60, z: 18, rot: 0, modelIdx: 4, scale: 3.8 },
+      { x: 100, z: 18, rot: 0, modelIdx: 5, scale: 3.8 },
+      { x: 180, z: 18, rot: 0, modelIdx: 6, scale: 3.8 },
 
-      { x: -45, z: -18, rot: Math.PI, modelIdx: 6, scale: 3.8 },
-      { x: -85, z: -18, rot: Math.PI, modelIdx: 7, scale: 3.8 },
-      { x: 15, z: -18, rot: Math.PI, modelIdx: 8, scale: 3.8 },
-      { x: 55, z: -18, rot: Math.PI, modelIdx: 9, scale: 3.8 },
-      { x: 95, z: -18, rot: Math.PI, modelIdx: 10, scale: 3.8 },
-      { x: 180, z: -18, rot: Math.PI, modelIdx: 11, scale: 3.8 },
+      { x: -20, z: -18, rot: Math.PI, modelIdx: 7, scale: 3.8 },
+      { x: 0, z: -18, rot: Math.PI, modelIdx: 8, scale: 3.8 },
+      { x: 20, z: -18, rot: Math.PI, modelIdx: 9, scale: 3.8 },
+      { x: -60, z: -18, rot: Math.PI, modelIdx: 10, scale: 3.8 },
+      { x: 60, z: -18, rot: Math.PI, modelIdx: 11, scale: 3.8 },
+      { x: 100, z: -18, rot: Math.PI, modelIdx: 12, scale: 3.8 },
+      { x: 180, z: -18, rot: Math.PI, modelIdx: 13, scale: 3.8 },
 
       // Bodija & Jericho buildings
       { x: 145, z: 90, rot: Math.PI / 2, modelIdx: 12, scale: 3.8 },
@@ -478,8 +480,8 @@ export class IbadanWorld {
       { name: 'sedan.glb', x: -10, z: -4.5, rot: 0 },
       { name: 'police.glb', x: 20, z: 4.5, rot: Math.PI },
       { name: 'delivery.glb', x: -40, z: -4.5, rot: 0 },
-      { name: 'hatchback.glb', x: 50, z: -4.5, rot: 0 },
-      { name: 'garbage.glb', x: 200, z: 4.5, rot: Math.PI },
+      { name: 'hatchback-sports.glb', x: 50, z: -4.5, rot: 0 },
+      { name: 'garbage-truck.glb', x: 200, z: 4.5, rot: Math.PI },
     ];
 
     vehicles.forEach((v) => {
