@@ -46,6 +46,7 @@ export function App() {
   const [activeModal, setActiveModal] = useState<'jobs' | 'market' | 'housing' | 'business' | 'map' | 'travel' | 'customization' | null>(null);
   const [selectedInteractionPlayer, setSelectedInteractionPlayer] = useState<NetworkPlayer | null>(null);
   const [nearestInteraction, setNearestInteraction] = useState<string | null>(null);
+  const nearestInteractionRef = useRef<string | null>(null);
 
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [userInventory, setUserInventory] = useState<any[]>([]);
@@ -156,10 +157,13 @@ export function App() {
 
     const localController = new AnimatedCharacterController();
     localPlayerControllerRef.current = localController;
-    localController.loadCharacter(playerData.character, true).then(() => {
-      cameraMgr.setTarget(localController.group);
-    });
+    cameraMgr.setTarget(localController.group);
+    localController.loadCharacter(playerData.character, true);
     scene.add(localController.group);
+
+    // Synchronize initial Lagos time and HUD display immediately
+    world.updateLagosTime();
+    setLagosTimeDisplay(world.getFormattedLagosTime());
 
     const realtime = new RealtimeService(
       currentDistrict,
@@ -277,16 +281,18 @@ export function App() {
         }
 
         const npcMatch = npcMgr.getNearestNPC(localGroup.position, 3.5);
+        let nextInteraction: string | null = null;
         if (npcMatch) {
-          setNearestInteraction(`Talk to ${npcMatch.data.name} (${npcMatch.data.role})`);
+          nextInteraction = `Talk to ${npcMatch.data.name} (${npcMatch.data.role})`;
         } else if (remotePlayers.length > 0) {
-          setNearestInteraction(`Interact with ${remotePlayers[0].display_name}`);
-        } else {
-          setNearestInteraction(null);
+          nextInteraction = `Interact with ${remotePlayers[0].display_name}`;
+        }
+
+        if (nextInteraction !== nearestInteractionRef.current) {
+          nearestInteractionRef.current = nextInteraction;
+          setNearestInteraction(nextInteraction);
         }
       }
-
-      npcMgr.update(delta);
 
       remotePlayers.forEach((rp) => {
         let mesh = remotePlayerMeshesRef.current.get(rp.id);

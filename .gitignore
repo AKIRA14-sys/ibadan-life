@@ -1,6 +1,11 @@
 node_modules
 dist
-public/assets
 .DS_Store
 *.local
 .env
+public/assets/kenney/nature
+public/assets/kenney/*/Side
+public/assets/kenney/*.png
+public/assets/kenney/*.txt
+public/assets/kenney/*/Models/OBJ format
+public/assets/kenney/*/Models/FBX format
