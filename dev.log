@@ -12,16 +12,23 @@ Inspecting kenney_furniture-kit.zip...
 Archive kenney_furniture-kit.zip already extracted and up-to-date.
 Inspecting kenney_nature-kit.zip...
 Archive kenney_nature-kit.zip already extracted and up-to-date.
+Port 3000 is in use, trying another one...
 
-  VITE v5.4.21  ready in 257 ms
+  VITE v5.4.21  ready in 263 ms
 
-  ➜  Local:   http://localhost:3000/
-  ➜  Network: http://192.168.0.2:3000/
-7:59:24 PM [vite] hmr update /src/components/MobileControls.tsx
-7:59:37 PM [vite] hmr update /src/App.tsx
-8:00:14 PM [vite] hmr update /src/components/ChatOverlay.tsx
-8:01:42 PM [vite] hmr update /src/App.tsx
-8:01:50 PM [vite] hmr update /src/App.tsx, /src/components/MapModal.tsx, /src/components/TravelModal.tsx
-8:02:47 PM [vite] hmr update /src/components/MobileControls.tsx
-8:06:14 PM [vite] hmr update /src/App.tsx
-8:07:03 PM [vite] hmr update /src/App.tsx
+  ➜  Local:   http://localhost:3001/
+  ➜  Network: http://192.168.0.2:3001/
+2:31:46 PM [vite] hmr update /src/App.tsx
+2:31:46 PM [vite] hmr update /src/App.tsx
+2:32:21 PM [vite] hmr update /src/App.tsx, /src/components/TravelModal.tsx, /src/components/MapModal.tsx
+2:32:21 PM [vite] hmr update /src/App.tsx, /src/components/MapModal.tsx, /src/components/TravelModal.tsx
+2:32:54 PM [vite] hmr update /src/App.tsx, /src/components/MapModal.tsx, /src/components/TravelModal.tsx
+2:32:54 PM [vite] hmr update /src/App.tsx, /src/components/TravelModal.tsx, /src/components/MapModal.tsx
+2:35:29 PM [vite] hmr update /src/App.tsx
+2:35:29 PM [vite] hmr update /src/App.tsx
+2:35:32 PM [vite] hmr update /src/App.tsx
+2:35:32 PM [vite] hmr update /src/App.tsx
+2:38:31 PM [vite] hmr update /src/App.tsx
+2:38:31 PM [vite] hmr update /src/App.tsx
+2:38:40 PM [vite] hmr update /src/App.tsx
+2:38:40 PM [vite] hmr update /src/App.tsx

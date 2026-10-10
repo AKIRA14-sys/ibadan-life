@@ -23,13 +23,14 @@ export class TrafficManager {
     const gltfLoader = new GLTFLoader();
     const carPath = '/assets/kenney/cars/Models/GLB format/';
 
-    const carModels = ['sedan.glb', 'police.glb', 'delivery.glb', 'hatchback.glb'];
+    const carModels = ['sedan.glb', 'police.glb', 'delivery.glb', 'hatchback-sports.glb', 'suv-luxury.glb'];
 
     const trafficConfigs = [
       { model: 'sedan.glb', startX: -180, laneZ: 3.5, dir: 1 as const, speed: 12 },
       { model: 'police.glb', startX: -80, laneZ: 3.5, dir: 1 as const, speed: 14 },
       { model: 'delivery.glb', startX: 180, laneZ: -3.5, dir: -1 as const, speed: 10 },
-      { model: 'hatchback.glb', startX: 80, laneZ: -3.5, dir: -1 as const, speed: 11 },
+      { model: 'hatchback-sports.glb', startX: 80, laneZ: -3.5, dir: -1 as const, speed: 11 },
+      { model: 'suv-luxury.glb', startX: -240, laneZ: 3.5, dir: 1 as const, speed: 13 },
     ];
 
     for (const cfg of trafficConfigs) {

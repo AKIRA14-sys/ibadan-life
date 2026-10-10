@@ -8,7 +8,7 @@ export class AnimatedCharacterController {
   public group: THREE.Group;
   public mixer: THREE.AnimationMixer | null = null;
   public actions: Map<CharacterState, THREE.AnimationAction> = new Map();
-  public currentState: CharacterState = 'idle';
+  public currentState: CharacterState = '' as CharacterState;
   public isLoaded: boolean = false;
 
   private targetRotationY: number = 0;
@@ -25,8 +25,17 @@ export class AnimatedCharacterController {
     const basePath = '/assets/characters/';
 
     try {
-      // 1. Load base rigged model
-      const baseFbx = await fbxLoader.loadAsync(`${basePath}X Bot.fbx`);
+      // Clear any previous base model children to prevent memory accumulation on outfit reload
+      const toRemove = this.group.children.filter((c) => c !== this.clothingGroup);
+      toRemove.forEach((c) => this.group.remove(c));
+
+      // 1. Load base rigged model with skin (Idle.fbx contains X Bot skinned mesh)
+      let baseFbx: THREE.Group;
+      try {
+        baseFbx = await fbxLoader.loadAsync(`${basePath}Idle.fbx`);
+      } catch {
+        baseFbx = await fbxLoader.loadAsync(`${basePath}X Bot.fbx`);
+      }
       this.group.add(baseFbx);
 
       baseFbx.scale.set(0.012, 0.012, 0.012);
@@ -56,8 +65,8 @@ export class AnimatedCharacterController {
         }
       });
 
-      // 2. Build 3D Outfit Clothing Geometries (Shirt, Pants/Skirt, Collar/Gele)
-      this.attachOutfitClothingMeshes(characterData, topColor, bottomColor);
+      // 2. Attach 3D Outfit Clothing Geometries directly to bones for skeletal movement
+      this.attachOutfitClothingToBones(baseFbx, characterData, topColor, bottomColor);
 
       // 3. Initialize AnimationMixer
       this.mixer = new THREE.AnimationMixer(baseFbx);
@@ -86,10 +95,9 @@ export class AnimatedCharacterController {
         }
       }
 
-      // Start with idle action immediately
-      const idleAction = this.actions.get('idle');
-      if (idleAction) {
-        idleAction.reset().setEffectiveWeight(1.0).play();
+      // Force play idle action
+      this.setState('idle');
+      if (this.mixer) {
         this.mixer.update(0.01);
       }
 
@@ -114,57 +122,31 @@ export class AnimatedCharacterController {
     }
   }
 
-  private attachOutfitClothingMeshes(
+  private attachOutfitClothingToBones(
+    baseFbx: THREE.Group,
     characterData: CharacterData | undefined,
     topColor: THREE.Color,
     bottomColor: THREE.Color
   ) {
-    // Clear previous clothing group items
-    while (this.clothingGroup.children.length > 0) {
-      this.clothingGroup.remove(this.clothingGroup.children[0]);
-    }
-
     const topMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
     const bottomMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
 
     const isFemale = characterData?.gender === 'Female';
+    const headBone = baseFbx.getObjectByName('mixamorigHead');
 
-    // 1. Shirt / Top Torso Wrap
-    const shirtMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.48, 0.26), topMat);
-    shirtMesh.position.set(0, 0.95, 0);
-    this.clothingGroup.add(shirtMesh);
-
-    // Collar detail
-    const collarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.08, 12), topMat);
-    collarMesh.position.set(0, 1.2, 0);
-    this.clothingGroup.add(collarMesh);
-
-    if (isFemale) {
-      // Female Skirt / Peplum Wrapper
-      const skirtMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 0.45, 16), bottomMat);
-      skirtMesh.position.set(0, 0.55, 0);
-      this.clothingGroup.add(skirtMesh);
-
-      // Traditional Gele / Headwrap accent
-      const geleMesh = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.05, 8, 16), topMat);
-      geleMesh.rotation.x = Math.PI / 3;
-      geleMesh.position.set(0, 1.32, 0);
-      this.clothingGroup.add(geleMesh);
-    } else {
-      // Male Trousers / Shorts
-      const leftLegPant = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.5, 12), bottomMat);
-      leftLegPant.position.set(-0.1, 0.45, 0);
-      this.clothingGroup.add(leftLegPant);
-
-      const rightLegPant = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.5, 12), bottomMat);
-      rightLegPant.position.set(0.1, 0.45, 0);
-      this.clothingGroup.add(rightLegPant);
-
-      // Traditional Cap / Fila accent
-      const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.1, 12), bottomMat);
-      capMesh.position.set(0, 1.34, 0);
-      capMesh.rotation.z = -0.15;
-      this.clothingGroup.add(capMesh);
+    // Attach authentic Nigerian headwear accessories smoothly to head bone
+    if (headBone) {
+      if (isFemale) {
+        const geleMesh = new THREE.Mesh(new THREE.TorusGeometry(11, 3.5, 10, 24), topMat);
+        geleMesh.rotation.x = Math.PI / 3.2;
+        geleMesh.position.set(0, 11, 1);
+        headBone.add(geleMesh);
+      } else {
+        const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(8.5, 9.5, 8, 16), bottomMat);
+        capMesh.position.set(0, 11, 0.5);
+        capMesh.rotation.z = -0.12;
+        headBone.add(capMesh);
+      }
     }
   }
 

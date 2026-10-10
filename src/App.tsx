@@ -262,6 +262,9 @@ export function App() {
           physicsRef.current.isJumping
         );
 
+        // NPC update with distance throttling
+        npcMgr.update(delta, localGroup.position);
+
         // Traffic update and vehicle collision recovery check
         const trafficState = trafficMgr.update(delta, localGroup.position);
         if (trafficState.collided) {

@@ -57,10 +57,18 @@ export class NPCManager {
     }
   }
 
-  public update(delta: number) {
+  public update(delta: number, playerPos?: THREE.Vector3) {
     // Update walking pedestrians along waypoints
     this.npcs.forEach((item, id) => {
-      const { controller, data } = item;
+      const { controller } = item;
+
+      // Mobile Optimization: Distance-based update throttling
+      if (playerPos) {
+        const dist = playerPos.distanceTo(controller.group.position);
+        if (dist > 160) {
+          return; // Skip distant NPC updates
+        }
+      }
 
       if (id.includes('pedestrian')) {
         const targetWP = this.waypoints[item.waypointIdx];
