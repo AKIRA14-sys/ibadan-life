@@ -386,27 +386,42 @@ export class IbadanWorld {
     const gltfLoader = new GLTFLoader();
     const furnPath = '/assets/kenney/furniture/Models/GLTF format/';
 
-    gltfLoader.load(`${furnPath}tableRound.glb`, (gltf) => {
-      const table = gltf.scene;
-      table.position.set(shopX - 1.8, 0.02, shopZ - 1.2);
-      table.scale.set(1.2, 1.2, 1.2);
-      this.scene.add(table);
-    });
+    gltfLoader.load(
+      `${furnPath}tableRound.glb`,
+      (gltf) => {
+        const table = gltf.scene;
+        table.position.set(shopX - 1.8, 0.02, shopZ - 1.2);
+        table.scale.set(1.2, 1.2, 1.2);
+        this.scene.add(table);
+      },
+      undefined,
+      (err) => console.warn('Failed to load shop tableRound.glb:', err)
+    );
 
-    gltfLoader.load(`${furnPath}loungeSofa.glb`, (gltf) => {
-      const sofa = gltf.scene;
-      sofa.position.set(shopX + 1.8, 0.02, shopZ - 1.5);
-      sofa.rotation.y = -Math.PI / 2;
-      sofa.scale.set(1.2, 1.2, 1.2);
-      this.scene.add(sofa);
-    });
+    gltfLoader.load(
+      `${furnPath}loungeSofa.glb`,
+      (gltf) => {
+        const sofa = gltf.scene;
+        sofa.position.set(shopX + 1.8, 0.02, shopZ - 1.5);
+        sofa.rotation.y = -Math.PI / 2;
+        sofa.scale.set(1.2, 1.2, 1.2);
+        this.scene.add(sofa);
+      },
+      undefined,
+      (err) => console.warn('Failed to load shop loungeSofa.glb:', err)
+    );
 
-    gltfLoader.load(`${furnPath}kitchenBar.glb`, (gltf) => {
-      const bar = gltf.scene;
-      bar.position.set(shopX, 0.02, shopZ - 2.2);
-      bar.scale.set(1.2, 1.2, 1.2);
-      this.scene.add(bar);
-    });
+    gltfLoader.load(
+      `${furnPath}kitchenBar.glb`,
+      (gltf) => {
+        const bar = gltf.scene;
+        bar.position.set(shopX, 0.02, shopZ - 2.2);
+        bar.scale.set(1.2, 1.2, 1.2);
+        this.scene.add(bar);
+      },
+      undefined,
+      (err) => console.warn('Failed to load shop kitchenBar.glb:', err)
+    );
   }
 
   private loadKenneyBuildingModels() {

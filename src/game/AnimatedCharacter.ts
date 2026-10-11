@@ -30,12 +30,21 @@ export class AnimatedCharacterController {
       toRemove.forEach((c) => this.group.remove(c));
 
       // 1. Load base rigged model with skin (Idle.fbx contains X Bot skinned mesh)
-      let baseFbx: THREE.Group;
+      let baseFbx: THREE.Group | null = null;
       try {
         baseFbx = await fbxLoader.loadAsync(`${basePath}Idle.fbx`);
       } catch {
-        baseFbx = await fbxLoader.loadAsync(`${basePath}X Bot.fbx`);
+        try {
+          baseFbx = await fbxLoader.loadAsync(`${basePath}X Bot.fbx`);
+        } catch {
+          baseFbx = null;
+        }
       }
+
+      if (!baseFbx) {
+        throw new Error('FBX model files unavailable, switching to fallback mesh');
+      }
+
       this.group.add(baseFbx);
 
       baseFbx.scale.set(0.012, 0.012, 0.012);
