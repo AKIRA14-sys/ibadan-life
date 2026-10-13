@@ -131,9 +131,15 @@ export function App() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x38bdf8);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'default', failIfMajorPerformanceCaveat: false });
+    } catch {
+      renderer = new THREE.WebGLRenderer({ antialias: false });
+    }
+
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.style.width = '100%';
